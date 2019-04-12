@@ -1,19 +1,22 @@
 Attribute VB_Name = "NoesysCallModule"
-Public Sub NoesysCall(TextInput As String, ProductCodeInput As String, PackSizeInput As String, DateInput As String)
+Public Sub NoesysCall(DescriptionInput As String, ProductCodeInput As String, PackSizeInput As String, DateInput As String, SupplierInput As String, SourceInput As String)
     
+    Application.ScreenUpdating = False
     Dim ResultsTable As ListObject
     Set ResultsTable = ActiveSheet.ListObjects("Results")
+    Dim TableRows As Integer
+    TableRows = ResultsTable.ListRows.Count
     
 '    Dim CheckList As Object
 '    Set CheckList = ActiveSheet.NoesysList
     
 '    Clear out previous data in table
-    If ResultsTable.ListRows.Count >= 1 Then
+    If TableRows >= 1 Then
         ResultsTable.DataBodyRange.ClearContents
     End If
     
     Dim ResultsLocation As Range
-    Set ResultsLocation = ResultsTable.Range
+    Set ResultsLocation = ResultsTable.Range.Offset(1, 0)
     
     Dim ListString As String
     
@@ -24,18 +27,36 @@ Public Sub NoesysCall(TextInput As String, ProductCodeInput As String, PackSizeI
 '    Next
 '    MsgBox ListString
     
+    
+    DescriptionInput = SplitInputStrings.SplitInputString(DescriptionInput, "[Description]")
+    If Not ProductCodeInput = "" Then
+        ProductCodeInput = " AND " & SplitInputStrings.SplitInputString(ProductCodeInput, "[ProductCode]")
+    End If
+    If Not PackSizeInput = "" Then
+        PackSizeInput = " AND " & SplitInputStrings.SplitInputString(PackSizeInput, "[NamedPackSize]")
+    End If
+    If Not SupplierInput = "" Then
+        SupplierInput = " AND " & SplitInputStrings.SplitInputString(SupplierInput, "[Supplier].[Name]")
+    End If
+    If Not SourceInput = "" Then
+        SourceInput = " AND " & SplitInputStrings.SplitInputString(SourceInput, "[Category7]")
+    End If
+    
+    'Construct the SQL string to pass to Noesys
     Dim StrSQL As String
-    StrSQL = "SELECT TOP 20  (SELECT [Supplier].[Name] from [Noesys].[dbo].[Supplier] WHERE [Supplier].[ID]=[OrderRecords].[ID_Supplier]) as Supplier" & _
-            " ,[ProductCode],[Description],[NamedPackSize],[PackPrice],[DateofPrice]," & _
-            " (SELECT [ClientSize].[Name] from [Noesys].[dbo].[ClientSize] WHERE [ClientSize].[ID]=[OrderRecords].[ID_ClientSize]) as ClientSize " & _
-            " FROM OrderRecords" & _
-            " WHERE [Description] LIKE '%" & TextInput & "%'" & _
+    StrSQL = "SELECT TOP " & TableRows & " [Supplier].[Name] as Supplier" & _
+            " ,[Category7] as Source ,[ProductCode] as 'Product Code',[Description],[NamedPackSize] as 'Pack Size',[PackPrice] as Price,[DateofPrice] as Date " & _
+            " FROM OrderRecords,Supplier" & _
+            " WHERE " & DescriptionInput & _
             " AND [DateofPrice]>= '" & DateInput & "'" & _
-            " AND [ProductCode] LIKE '%" & ProductCodeInput & "%'" & _
-            " AND [NamedPackSize] LIKE '%" & PackSizeInput & "%'" & _
+            ProductCodeInput & _
+            PackSizeInput & _
+            SupplierInput & _
+            SourceInput & _
             " AND [PackPrice]!=0" & _
+            " AND [Supplier].[ID]=[OrderRecords].[ID_Supplier]" & _
             " ORDER BY [PackPrice];"
-
+    'MsgBox StrSQL
 
     ' Create a recordset object.
     If cnPubs Is Nothing Then
@@ -50,7 +71,7 @@ Public Sub NoesysCall(TextInput As String, ProductCodeInput As String, PackSizeI
     If Not rsPubs.EOF Then
     ' Transfer result.
         ResultsLocation.CopyFromRecordset rsPubs
-        ResultsLocation.Columns.AutoFit
+        'ResultsLocation.Columns.AutoFit
 '        Add in column names from DB
         Dim index As Integer
         For index = 0 To rsPubs.Fields.Count - 1
@@ -89,8 +110,9 @@ Public Sub NoesysCall(TextInput As String, ProductCodeInput As String, PackSizeI
 '            Next
 '        Loop
 '    End With
-        
 
+    Application.ScreenUpdating = True
+Exit Sub
 
 End Sub
 

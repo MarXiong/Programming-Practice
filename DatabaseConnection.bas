@@ -2,6 +2,8 @@ Attribute VB_Name = "DatabaseConnection"
 Public cnPubs As ADODB.Connection
     
 Public Sub Connection()
+Attribute Connection.VB_Description = "This attempts to establish a connection to Noesys and then informs you whether it succeeded"
+Attribute Connection.VB_ProcData.VB_Invoke_Func = " \n14"
     
     Dim ReturnArray
     
